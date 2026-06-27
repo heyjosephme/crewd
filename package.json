@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.15.0",
     "lucide-react": "^1.21.0",
+    "motion": "^12.42.0",
     "next": "16.2.9",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

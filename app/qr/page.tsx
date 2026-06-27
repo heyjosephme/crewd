@@ -12,7 +12,7 @@ export default function QrPage() {
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-white p-10 text-center text-zinc-900">
       <div>
         <h1 className="text-6xl font-black tracking-tight">
-          crewd<span className="text-violet-600">.</span>
+          Crewd<span className="text-violet-600">.</span>
         </h1>
         <p className="mt-3 text-2xl text-zinc-500">
           Scan to find your hackathon crew

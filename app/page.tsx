@@ -104,7 +104,7 @@ export default function Home() {
             Live at the hackathon
           </div>
           <h1 className="text-4xl font-bold tracking-tight">
-            crewd<span className="text-primary">.</span>
+            Crewd<span className="text-primary">.</span>
           </h1>
           <p className="mt-2 text-balance text-muted-foreground">
             Pick a vibe and a role — get matched with the best teammates in the

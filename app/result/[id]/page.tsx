@@ -48,7 +48,7 @@ export default function ResultPage({
             Back
           </Link>
           <span className="text-lg font-bold tracking-tight">
-            crewd<span className="text-primary">.</span>
+            Crewd<span className="text-primary">.</span>
           </span>
         </div>
 
