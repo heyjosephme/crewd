@@ -1,7 +1,14 @@
-import { addDoc, collection, doc, getDocs, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { ATTENDEES, getDb, toAttendee } from "@/lib/firebase";
 import { matchAttendee } from "@/lib/gemini";
+import { DEFAULT_AVATAR, isRole } from "@/lib/profile";
 import type { Attendee } from "@/lib/types";
 
 // Firebase JS SDK needs the Node runtime (not Edge). Never cache.
@@ -16,16 +23,22 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Partial<
-      Record<"name" | "building" | "skills" | "lookingFor", string>
+      Record<
+        "name" | "avatar" | "role" | "building" | "skills" | "lookingFor",
+        string
+      >
     >;
     const name = (body.name ?? "").trim();
+    const role = (body.role ?? "").trim();
+    const avatar = (body.avatar ?? "").trim() || DEFAULT_AVATAR;
     const building = (body.building ?? "").trim();
     const skills = (body.skills ?? "").trim();
     const lookingFor = (body.lookingFor ?? "").trim();
 
-    if (!name || !building || !skills || !lookingFor) {
+    // Onboarding is just a name + a role now; the text fields are optional context.
+    if (!name || !isRole(role)) {
       return NextResponse.json(
-        { error: "All four fields are required." },
+        { error: "A name and a role are required." },
         { status: 400 },
       );
     }
@@ -35,8 +48,25 @@ export async function POST(req: Request) {
 
     // 1) Persist the new attendee so they appear on the live screen immediately.
     const createdAt = Date.now();
-    const ref = await addDoc(col, { name, building, skills, lookingFor, createdAt });
-    const person: Attendee = { id: ref.id, name, building, skills, lookingFor, createdAt };
+    const ref = await addDoc(col, {
+      name,
+      avatar,
+      role,
+      building,
+      skills,
+      lookingFor,
+      createdAt,
+    });
+    const person: Attendee = {
+      id: ref.id,
+      name,
+      avatar,
+      role,
+      building,
+      skills,
+      lookingFor,
+      createdAt,
+    };
 
     // 2) Read the current roster (includes the new person; the matcher filters self out).
     const snap = await getDocs(col);
@@ -46,7 +76,10 @@ export async function POST(req: Request) {
     const matches = await matchAttendee(person, roster);
 
     // 4) Persist the result so the screen + result page reflect it in real time.
-    await updateDoc(doc(db, ATTENDEES, ref.id), { matches, matchedAt: Date.now() });
+    await updateDoc(doc(db, ATTENDEES, ref.id), {
+      matches,
+      matchedAt: Date.now(),
+    });
 
     return NextResponse.json({ id: ref.id, matches });
   } catch (err) {

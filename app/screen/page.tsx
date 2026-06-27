@@ -4,6 +4,7 @@ import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { ATTENDEES, getDb, toAttendee } from "@/lib/firebase";
+import { DEFAULT_AVATAR, roleMeta } from "@/lib/profile";
 import type { Attendee } from "@/lib/types";
 
 const FRESH_MS = 90_000;
@@ -15,7 +16,10 @@ export default function ScreenPage() {
   // Passive: the screen ONLY listens and re-renders. It never triggers matching.
   useEffect(() => {
     setUrl(window.location.origin);
-    const q = query(collection(getDb(), ATTENDEES), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(getDb(), ATTENDEES),
+      orderBy("createdAt", "desc"),
+    );
     const unsub = onSnapshot(
       q,
       (snap) => setAttendees(snap.docs.map((d) => toAttendee(d.id, d.data()))),
@@ -26,7 +30,9 @@ export default function ScreenPage() {
 
   const latest = attendees[0];
   const rest = attendees.slice(1, 13);
-  const matchedCount = attendees.filter((a) => (a.matches?.length ?? 0) > 0).length;
+  const matchedCount = attendees.filter(
+    (a) => (a.matches?.length ?? 0) > 0,
+  ).length;
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#0a0a14] px-6 py-6 text-white lg:px-10 lg:py-8">
@@ -62,7 +68,9 @@ export default function ScreenPage() {
               In the room
             </h2>
             {rest.length === 0 ? (
-              <p className="text-white/40">More builders will appear here as they join…</p>
+              <p className="text-white/40">
+                More builders will appear here as they join…
+              </p>
             ) : (
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {rest.map((a) => (
@@ -78,17 +86,24 @@ export default function ScreenPage() {
           <div className="sticky top-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur">
             <p className="text-lg font-semibold">Scan to join the crew</p>
             <p className="mt-1 text-sm text-white/50">
-              Fill 4 fields, get matched in seconds.
+              Pick your vibe, get matched in seconds.
             </p>
             <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4 shadow-2xl shadow-violet-900/40">
               {url ? (
-                <QRCodeSVG value={url} size={208} bgColor="#ffffff" fgColor="#0a0a14" />
+                <QRCodeSVG
+                  value={url}
+                  size={208}
+                  bgColor="#ffffff"
+                  fgColor="#0a0a14"
+                />
               ) : (
                 <div className="size-[208px] animate-pulse rounded bg-zinc-200" />
               )}
             </div>
             {url && (
-              <p className="mt-4 break-all font-mono text-xs text-white/40">{url}</p>
+              <p className="mt-4 break-all font-mono text-xs text-white/40">
+                {url}
+              </p>
             )}
           </div>
         </aside>
@@ -113,7 +128,9 @@ function Stat({
       >
         {value}
       </div>
-      <div className="text-xs uppercase tracking-widest text-white/40">{label}</div>
+      <div className="text-xs uppercase tracking-widest text-white/40">
+        {label}
+      </div>
     </div>
   );
 }
@@ -136,12 +153,25 @@ function Spotlight({ latest }: { latest: Attendee | undefined }) {
       <p className="text-xs font-semibold uppercase tracking-widest text-violet-300">
         {fresh ? "✨ Just joined" : "Latest builder"}
       </p>
-      <h1 className="mt-1 text-4xl font-black tracking-tight lg:text-5xl">
-        {latest.name}
-      </h1>
-      <p className="mt-2 line-clamp-2 max-w-2xl text-lg text-white/60">
-        {latest.building}
-      </p>
+      <div className="mt-1 flex items-center gap-4">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-4xl lg:size-20 lg:text-5xl"
+          aria-hidden
+        >
+          {latest.avatar || DEFAULT_AVATAR}
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-4xl font-black tracking-tight lg:text-5xl">
+            {latest.name}
+          </h1>
+          <ScreenRoleTag role={latest.role} className="mt-2" />
+        </div>
+      </div>
+      {latest.building && (
+        <p className="mt-3 line-clamp-2 max-w-2xl text-lg text-white/60">
+          {latest.building}
+        </p>
+      )}
 
       <div className="mt-6">
         {matches.length > 0 ? (
@@ -155,8 +185,14 @@ function Spotlight({ latest }: { latest: Attendee | undefined }) {
                   key={m.id || `${m.name}-${i}`}
                   className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5"
                 >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-500 text-sm font-bold">
-                    {i + 1}
+                  <span
+                    className="relative flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-xl"
+                    aria-hidden
+                  >
+                    {m.avatar || DEFAULT_AVATAR}
+                    <span className="absolute -left-1 -top-1 flex size-4 items-center justify-center rounded-full bg-violet-500 text-[10px] font-bold">
+                      {i + 1}
+                    </span>
                   </span>
                   <div className="min-w-0">
                     <span className="font-semibold">{m.name}</span>
@@ -182,15 +218,47 @@ function RosterCard({ a }: { a: Attendee }) {
   const matched = (a.matches?.length ?? 0) > 0;
   return (
     <li className="animate-rise rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate font-semibold">{a.name}</p>
+      <div className="flex items-center gap-2">
+        <span
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-lg"
+          aria-hidden
+        >
+          {a.avatar || DEFAULT_AVATAR}
+        </span>
+        <p className="min-w-0 flex-1 truncate font-semibold">{a.name}</p>
         {matched && (
           <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
             matched
           </span>
         )}
       </div>
-      <p className="mt-1 line-clamp-2 text-sm text-white/50">{a.building}</p>
+      {a.building ? (
+        <p className="mt-1.5 line-clamp-2 text-sm text-white/50">
+          {a.building}
+        </p>
+      ) : (
+        <ScreenRoleTag role={a.role} className="mt-2" />
+      )}
     </li>
+  );
+}
+
+// Role pill tuned for the dark big-screen theme. Renders nothing for unknown roles.
+function ScreenRoleTag({
+  role,
+  className,
+}: {
+  role?: string;
+  className?: string;
+}) {
+  const meta = roleMeta(role);
+  if (!meta) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/70 ${className ?? ""}`}
+    >
+      <span aria-hidden>{meta.emoji}</span>
+      {meta.label}
+    </span>
   );
 }

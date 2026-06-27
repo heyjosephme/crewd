@@ -14,7 +14,9 @@ export default function QrPage() {
         <h1 className="text-6xl font-black tracking-tight">
           crewd<span className="text-violet-600">.</span>
         </h1>
-        <p className="mt-3 text-2xl text-zinc-500">Scan to find your hackathon crew</p>
+        <p className="mt-3 text-2xl text-zinc-500">
+          Scan to find your hackathon crew
+        </p>
       </div>
       <div className="rounded-3xl border-4 border-zinc-900 p-6 shadow-xl">
         {url ? (

@@ -50,6 +50,7 @@ async function geminiMatches(
   const candidateList = candidates.map((c) => ({
     id: c.id,
     name: c.name,
+    role: c.role,
     building: clip(c.building),
     skills: clip(c.skills),
     lookingFor: clip(c.lookingFor),
@@ -58,12 +59,16 @@ async function geminiMatches(
   const prompt = [
     "You are the live matchmaking engine for a hackathon happening right now.",
     "A new attendee just joined the room. From the CANDIDATES list, pick the 3 best",
-    "teammates for them, optimizing for complementary skills and aligned goals",
-    "(what they want to build + the kind of teammate they're looking for).",
+    "teammates for them, optimizing for complementary roles and skills plus aligned",
+    "goals (what they want to build + the kind of teammate they're looking for).",
+    "Prefer complementary roles — e.g. pair a Coder with a Designer, Speaker, or",
+    "Viber rather than another identical role — unless the free-text says otherwise.",
+    "Some fields may be empty; lean on role and whatever text is provided.",
     "",
     "NEW ATTENDEE:",
     JSON.stringify({
       name: person.name,
+      role: person.role,
       building: clip(person.building),
       skills: clip(person.skills),
       lookingFor: clip(person.lookingFor),
@@ -115,7 +120,14 @@ async function geminiMatches(
     const c = byId.get(id);
     if (!c || seen.has(id) || reason.length === 0) continue;
     seen.add(id);
-    matches.push({ id: c.id, name: c.name, building: c.building, reason });
+    matches.push({
+      id: c.id,
+      name: c.name,
+      avatar: c.avatar,
+      role: c.role,
+      building: c.building,
+      reason,
+    });
     if (matches.length === 3) break;
   }
   return matches;
@@ -137,9 +149,41 @@ function safeParse(text: string): unknown {
 // --- Heuristic fallback (no model required) ---
 
 const STOP = new Set([
-  "the","a","an","and","or","to","of","for","with","in","on","at","im","i'm","my",
-  "me","we","our","want","looking","build","building","someone","who","that","this",
-  "is","are","be","using","app","make","making","need","help",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "to",
+  "of",
+  "for",
+  "with",
+  "in",
+  "on",
+  "at",
+  "im",
+  "i'm",
+  "my",
+  "me",
+  "we",
+  "our",
+  "want",
+  "looking",
+  "build",
+  "building",
+  "someone",
+  "who",
+  "that",
+  "this",
+  "is",
+  "are",
+  "be",
+  "using",
+  "app",
+  "make",
+  "making",
+  "need",
+  "help",
 ]);
 
 function tokenize(s: string): Set<string> {
@@ -148,18 +192,24 @@ function tokenize(s: string): Set<string> {
 }
 
 function heuristicMatches(person: Attendee, candidates: Attendee[]): Match[] {
-  const want = tokenize(`${person.lookingFor} ${person.building} ${person.skills}`);
+  const want = tokenize(
+    `${person.lookingFor} ${person.building} ${person.skills}`,
+  );
   return candidates
     .map((c) => {
       const have = tokenize(`${c.skills} ${c.building} ${c.lookingFor}`);
       const shared = [...want].filter((t) => have.has(t));
-      return { c, score: shared.length, shared };
+      // Nudge toward complementary roles (a Coder + Designer beats two Coders).
+      const roleBonus = person.role && c.role && person.role !== c.role ? 1 : 0;
+      return { c, score: shared.length + roleBonus, shared };
     })
     .sort((a, b) => b.score - a.score || b.c.createdAt - a.c.createdAt)
     .slice(0, 3)
     .map(({ c, shared }) => ({
       id: c.id,
       name: c.name,
+      avatar: c.avatar,
+      role: c.role,
       building: c.building,
       reason:
         shared.length > 0

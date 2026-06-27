@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Sparkles, Tv } from "lucide-react";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { ATTENDEES, getDb, toAttendee } from "@/lib/firebase";
+import { DEFAULT_AVATAR, roleMeta } from "@/lib/profile";
 import type { Attendee } from "@/lib/types";
 
 export default function ResultPage({
@@ -64,10 +65,27 @@ export default function ResultPage({
             </Link>
           </div>
         ) : matches.length === 0 ? (
-          <CenteredSpinner label="Finding your crew…" sub="Asking Gemini who you should team up with." />
+          <CenteredSpinner
+            label="Finding your crew…"
+            sub="Asking Gemini who you should team up with."
+          />
         ) : (
           <>
             <header className="mb-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div
+                  className="flex size-12 items-center justify-center rounded-2xl border bg-card text-2xl shadow-sm"
+                  aria-hidden
+                >
+                  {attendee.avatar || DEFAULT_AVATAR}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold leading-tight">
+                    {attendee.name}
+                  </p>
+                  <RoleTag role={attendee.role} className="mt-1" />
+                </div>
+              </div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 <Sparkles className="size-3.5" />
                 Your top {matches.length} matches
@@ -87,11 +105,22 @@ export default function ResultPage({
                   className="rounded-2xl border bg-card p-5 shadow-sm"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                      {i + 1}
+                    <div
+                      className="relative flex size-11 shrink-0 items-center justify-center rounded-2xl border bg-background text-2xl shadow-sm"
+                      aria-hidden
+                    >
+                      {m.avatar || DEFAULT_AVATAR}
+                      <span className="absolute -left-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                        {i + 1}
+                      </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-lg font-semibold leading-tight">{m.name}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-lg font-semibold leading-tight">
+                          {m.name}
+                        </p>
+                        <RoleTag role={m.role} />
+                      </div>
                       {m.building && (
                         <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
                           Building: {m.building}
@@ -109,7 +138,10 @@ export default function ResultPage({
             <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-dashed bg-card/60 p-4 text-center text-sm text-muted-foreground">
               <Tv className="size-4 text-primary" />
               You&apos;re live on the{" "}
-              <Link href="/screen" className="font-medium text-primary hover:underline">
+              <Link
+                href="/screen"
+                className="font-medium text-primary hover:underline"
+              >
                 big screen
               </Link>
               .
@@ -118,6 +150,21 @@ export default function ResultPage({
         )}
       </div>
     </main>
+  );
+}
+
+// A small role pill (emoji + label). Renders nothing for unknown/empty roles so
+// older docs without a role degrade gracefully.
+function RoleTag({ role, className }: { role?: string; className?: string }) {
+  const meta = roleMeta(role);
+  if (!meta) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground ${className ?? ""}`}
+    >
+      <span aria-hidden>{meta.emoji}</span>
+      {meta.label}
+    </span>
   );
 }
 

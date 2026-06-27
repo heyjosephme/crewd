@@ -1,5 +1,9 @@
 import { type FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
-import { type DocumentData, type Firestore, getFirestore } from "firebase/firestore";
+import {
+  type DocumentData,
+  type Firestore,
+  getFirestore,
+} from "firebase/firestore";
 import type { Attendee, Match } from "./types";
 
 // The Firebase *web* config is public by design — it ships in the client bundle of
@@ -12,7 +16,8 @@ const firebaseConfig = {
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ??
     "AIzaSyA4MF4gOHy_0ykjRG896ZCdyHK1wKNdD2E",
   authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "crewd-hackthon.firebaseapp.com",
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??
+    "crewd-hackthon.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "crewd-hackthon",
   storageBucket:
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
@@ -29,7 +34,9 @@ let firestore: Firestore | undefined;
 // Lazy singleton: importing this module never touches the network, so the app
 // builds and serves a hello-world even before real config/secrets are wired.
 export function getDb(): Firestore {
-  const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  const app: FirebaseApp = getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig);
   if (!firestore) firestore = getFirestore(app);
   return firestore;
 }
@@ -41,11 +48,15 @@ export function toAttendee(id: string, data: DocumentData): Attendee {
   return {
     id,
     name: typeof data.name === "string" ? data.name : "",
+    avatar: typeof data.avatar === "string" ? data.avatar : "",
+    role: typeof data.role === "string" ? data.role : "",
     building: typeof data.building === "string" ? data.building : "",
     skills: typeof data.skills === "string" ? data.skills : "",
     lookingFor: typeof data.lookingFor === "string" ? data.lookingFor : "",
     createdAt: typeof data.createdAt === "number" ? data.createdAt : 0,
-    matches: Array.isArray(data.matches) ? (data.matches as Match[]) : undefined,
+    matches: Array.isArray(data.matches)
+      ? (data.matches as Match[])
+      : undefined,
     matchedAt: typeof data.matchedAt === "number" ? data.matchedAt : undefined,
   };
 }
