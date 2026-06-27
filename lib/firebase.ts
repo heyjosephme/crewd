@@ -4,6 +4,7 @@ import {
   type Firestore,
   getFirestore,
 } from "firebase/firestore";
+import { type FirebaseStorage, getStorage } from "firebase/storage";
 import type { Attendee, Match } from "./types";
 
 // The Firebase *web* config is public by design — it ships in the client bundle of
@@ -41,7 +42,19 @@ export function getDb(): Firestore {
   return firestore;
 }
 
+let storage: FirebaseStorage | undefined;
+
+// Lazy Storage singleton — used for room meetup photos.
+export function getStorageInstance(): FirebaseStorage {
+  const app: FirebaseApp = getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig);
+  if (!storage) storage = getStorage(app);
+  return storage;
+}
+
 export const ATTENDEES = "attendees";
+export const ROOMS = "rooms";
 
 // Defensive mapper: a Firestore doc -> a well-typed Attendee, tolerating bad data.
 export function toAttendee(id: string, data: DocumentData): Attendee {

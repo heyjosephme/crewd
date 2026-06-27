@@ -1,5 +1,6 @@
 "use client";
 
+import { doc, setDoc } from "firebase/firestore";
 import {
   ArrowRight,
   Check,
@@ -15,13 +16,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AVATARS,
-  DEFAULT_AVATAR,
-  ROLES,
-  randomAvatar,
-  randomName,
-} from "@/lib/profile";
+import { ATTENDEES, getDb } from "@/lib/firebase";
+import { ensureMe, setMe } from "@/lib/identity";
+import { AVATARS, DEFAULT_AVATAR, ROLES, randomName } from "@/lib/profile";
 import type { ProfileInput } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +36,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Hand every arrival a fun identity on mount. Done client-side (not in the initial
-  // state) so server and client render the same thing — no hydration mismatch.
+  // Prefill the form with the visitor's existing identity (created on first load),
+  // so "Find my crew" just adds a role + matches rather than re-introducing them.
   useEffect(() => {
-    setForm((f) => ({ ...f, name: randomName(), avatar: randomAvatar() }));
+    const me = ensureMe();
+    setForm((f) => ({ ...f, name: me.name, avatar: me.avatar, role: me.role }));
   }, []);
 
   function update<K extends keyof ProfileInput>(
@@ -78,15 +76,26 @@ export default function Home() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(trimmed),
+      // "Find my crew" is when a default identity becomes a real /screen attendee:
+      // upsert the doc under the SAME local id (no AI yet), then match async on the
+      // result page. Reusing the id keeps one identity across Rooms / chat / Me.
+      const me = ensureMe();
+      await setDoc(doc(getDb(), ATTENDEES, me.id), {
+        name: trimmed.name,
+        avatar: trimmed.avatar,
+        role: trimmed.role,
+        building: trimmed.building,
+        skills: trimmed.skills,
+        lookingFor: trimmed.lookingFor,
+        createdAt: Date.now(),
       });
-      const data = (await res.json()) as { id?: string; error?: string };
-      if (!res.ok || !data.id)
-        throw new Error(data.error ?? "Something went wrong.");
-      router.push(`/result/${data.id}`);
+      setMe({
+        id: me.id,
+        name: trimmed.name,
+        avatar: trimmed.avatar,
+        role: trimmed.role,
+      });
+      router.push(`/result/${me.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setLoading(false);

@@ -1,11 +1,14 @@
 "use client";
 
 import { doc, onSnapshot } from "firebase/firestore";
-import { ArrowLeft, Loader2, Sparkles, Tv } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Tv, Users } from "lucide-react";
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ATTENDEES, getDb, toAttendee } from "@/lib/firebase";
 import { DEFAULT_AVATAR, roleMeta } from "@/lib/profile";
+import { createRoom } from "@/lib/rooms";
 import type { Attendee } from "@/lib/types";
 
 export default function ResultPage({
@@ -14,8 +17,10 @@ export default function ResultPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [attendee, setAttendee] = useState<Attendee | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -31,6 +36,35 @@ export default function ResultPage({
     );
     return () => unsub();
   }, [id]);
+
+  // The attendee is created instantly on submit (no AI wait). Kick off the Gemini
+  // match exactly once, when we first see an unmatched attendee; results stream in
+  // via the snapshot above. The route is idempotent, so revisits won't re-run it.
+  const matchRequested = useRef(false);
+  useEffect(() => {
+    if (!attendee || attendee.matchedAt || matchRequested.current) return;
+    matchRequested.current = true;
+    fetch("/api/match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: attendee.id }),
+    }).catch((err) => console.error("[result] match trigger failed:", err));
+  }, [attendee]);
+
+  async function startRoom() {
+    if (!attendee) return;
+    setCreatingRoom(true);
+    try {
+      const roomId = await createRoom({
+        name: `${attendee.name.split(" ")[0]}'s crew`,
+        creatorId: attendee.id,
+      });
+      router.push(`/rooms/${roomId}`);
+    } catch (err) {
+      console.error("[result] create room failed:", err);
+      setCreatingRoom(false);
+    }
+  }
 
   const matches = attendee?.matches ?? [];
 
@@ -64,7 +98,7 @@ export default function ResultPage({
               Start over →
             </Link>
           </div>
-        ) : matches.length === 0 ? (
+        ) : !attendee.matchedAt ? (
           <CenteredSpinner
             label="Finding your crew…"
             sub="Asking Gemini who you should team up with."
@@ -86,16 +120,29 @@ export default function ResultPage({
                   <RoleTag role={attendee.role} className="mt-1" />
                 </div>
               </div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <Sparkles className="size-3.5" />
-                Your top {matches.length} matches
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Hey {attendee.name.split(" ")[0]}, meet your crew.
-              </h1>
-              <p className="mt-1 text-muted-foreground">
-                The people in the room you should team up with right now.
-              </p>
+              {matches.length > 0 ? (
+                <>
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    <Sparkles className="size-3.5" />
+                    Your top {matches.length} matches
+                  </div>
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    Hey {attendee.name.split(" ")[0]}, meet your crew.
+                  </h1>
+                  <p className="mt-1 text-muted-foreground">
+                    The people in the room you should team up with right now.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    Hey {attendee.name.split(" ")[0]}, you&apos;re early!
+                  </h1>
+                  <p className="mt-1 text-muted-foreground">
+                    No matches yet — they&apos;ll appear here as more builders join.
+                  </p>
+                </>
+              )}
             </header>
 
             <ol className="space-y-4">
@@ -135,7 +182,23 @@ export default function ResultPage({
               ))}
             </ol>
 
-            <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-dashed bg-card/60 p-4 text-center text-sm text-muted-foreground">
+            <Button
+              onClick={startRoom}
+              disabled={creatingRoom}
+              size="lg"
+              className="mt-6 w-full"
+            >
+              {creatingRoom ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <Users />
+                  Start a room with your crew
+                </>
+              )}
+            </Button>
+
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-dashed bg-card/60 p-4 text-center text-sm text-muted-foreground">
               <Tv className="size-4 text-primary" />
               You&apos;re live on the{" "}
               <Link
